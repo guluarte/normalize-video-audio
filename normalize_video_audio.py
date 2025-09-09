@@ -30,11 +30,11 @@ import click
 # Common video file extensions
 VIDEO_EXTENSIONS = {".mp4", ".mkv", ".mov", ".avi", ".webm"}
 
-# Custom target parameters based on provided values
+# EBU R 128 standard parameters for loudness normalization
 LOUDNESS_TARGETS = {
-    "I": -7.75,  # Integrated Loudness Target in LUFS
-    "LRA": 5.10,  # Loudness Range Target
-    "TP": 1.32,   # True Peak Target in dBFS
+    "I": -16,  # Integrated Loudness Target in LUFS
+    "LRA": 11,  # Loudness Range Target
+    "TP": -1.5,  # True Peak Target in dBFS
 }
 
 

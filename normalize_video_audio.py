@@ -123,17 +123,22 @@ def get_loudness_stats(file_path: pathlib.Path) -> dict | None:
 
 
 def apply_normalization(
-    input_path: pathlib.Path, output_path: pathlib.Path, stats: dict
+    input_path: pathlib.Path, output_path: pathlib.Path, stats: dict, source_stats: dict | None = None
 ) -> bool:
     """
     Second pass of normalization: Apply the calculated stats to normalize.
     """
     click.echo(f"  Applying normalization to: {input_path.name}")
 
+    # Use source video targets if available, otherwise use standard EBU R128 targets
+    target_I = float(source_stats["measured_I"]) if source_stats else LOUDNESS_TARGETS["I"]
+    target_LRA = float(source_stats["measured_LRA"]) if source_stats else LOUDNESS_TARGETS["LRA"]
+    target_TP = float(source_stats["measured_TP"]) if source_stats else LOUDNESS_TARGETS["TP"]
+    
     loudnorm_filter = (
-        f"loudnorm=I={LOUDNESS_TARGETS['I']}:"
-        f"LRA={LOUDNESS_TARGETS['LRA']}:"
-        f"tp={LOUDNESS_TARGETS['TP']}:"
+        f"loudnorm=I={target_I}:"
+        f"LRA={target_LRA}:"
+        f"tp={target_TP}:"
         f"measured_I={stats['measured_I']}:"
         f"measured_LRA={stats['measured_LRA']}:"
         f"measured_tp={stats['measured_TP']}:"
@@ -265,11 +270,12 @@ def main(directory: pathlib.Path, dry_run: bool, source_video: pathlib.Path | No
                     continue
             
             # Calculate loudness difference from target
-            loudness_diff = abs(float(stats["measured_I"]) - LOUDNESS_TARGETS["I"])
+            target_loudness = float(source_stats["measured_I"]) if source_stats else LOUDNESS_TARGETS["I"]
+            loudness_diff = abs(float(stats["measured_I"]) - target_loudness)
             
             # Print stats for every file
             click.echo(f"  Measured loudness: {stats['measured_I']} LUFS")
-            click.echo(f"  Target loudness: {LOUDNESS_TARGETS['I']} LUFS")
+            click.echo(f"  Target loudness: {target_loudness} LUFS")
             click.echo(f"  Difference: {loudness_diff:.2f} LUFS (threshold: {threshold} LUFS)")
             
             # Skip confirmation if difference is below threshold
@@ -295,7 +301,7 @@ def main(directory: pathlib.Path, dry_run: bool, source_video: pathlib.Path | No
                 temp_output_path = file_path.with_name(
                     file_path.stem + ".temp_normalized" + file_path.suffix
                 )
-                success = apply_normalization(file_path, temp_output_path, stats)
+                success = apply_normalization(file_path, temp_output_path, stats, source_stats)
 
             if not success:
                 error_count += 1

@@ -32,9 +32,9 @@ VIDEO_EXTENSIONS = {".mp4", ".mkv", ".mov", ".avi", ".webm"}
 
 # EBU R 128 standard parameters for loudness normalization
 LOUDNESS_TARGETS = {
-    "I": -7,  # Integrated Loudness Target in LUFS
+    "I": -8,  # Integrated Loudness Target in LUFS
     "LRA": 5,  # Loudness Range Target
-    "TP": -1.3,  # True Peak Target in dBFS
+    "TP": -1.5,  # True Peak Target in dBFS
 }
 
 

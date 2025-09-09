@@ -84,8 +84,28 @@ def get_loudness_stats(file_path: pathlib.Path) -> dict | None:
         return None
 
     try:
-        # The JSON output is the last part of the stderr
-        stats_str = result.stderr.strip().split("\n")[-1]
+        # Find the JSON output in stderr - it should be the last JSON object
+        lines = result.stderr.strip().split("\n")
+        json_lines = []
+        in_json = False
+        
+        for line in lines:
+            line = line.strip()
+            if line.startswith('{'):
+                in_json = True
+                json_lines = [line]
+            elif in_json:
+                json_lines.append(line)
+                if line.endswith('}'):
+                    break
+        
+        if not json_lines:
+            click.secho(
+                f"    Could not extract loudness stats for {file_path.name}", fg="red"
+            )
+            return None
+            
+        stats_str = '\n'.join(json_lines)
         stats = json.loads(stats_str)
         return {
             "measured_I": stats["input_i"],

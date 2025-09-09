@@ -163,11 +163,20 @@ def apply_normalization(
         str(output_path),
     ]
 
+    # Display the ffmpeg command
+    click.echo(f"    Running command: {' '.join(cmd)}")
+
+    # Run the command and capture output
     result = run_command(cmd)
+
+    # Display ffmpeg output
+    if result.stdout:
+        click.echo(f"    ffmpeg stdout:\n{result.stdout}")
+    if result.stderr:
+        click.echo(f"    ffmpeg stderr:\n{result.stderr}")
 
     if result.returncode != 0:
         click.secho(f"    Error normalizing file: {input_path.name}", fg="red")
-        click.secho(result.stderr, fg="red")
         return False
 
     return True

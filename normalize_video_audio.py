@@ -292,8 +292,8 @@ def main(directory: pathlib.Path, dry_run: bool, source_video: pathlib.Path | No
                 click.secho(f"  [DRY RUN] Would normalize: {file_path.name}", fg="blue")
                 success = True
             else:
-                temp_output_path = file_path.with_suffix(
-                    file_path.suffix + ".temp_normalized"
+                temp_output_path = file_path.with_name(
+                    file_path.stem + ".temp_normalized" + file_path.suffix
                 )
                 success = apply_normalization(file_path, temp_output_path, stats)
 

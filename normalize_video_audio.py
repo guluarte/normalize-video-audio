@@ -30,11 +30,11 @@ import click
 # Common video file extensions
 VIDEO_EXTENSIONS = {".mp4", ".mkv", ".mov", ".avi", ".webm"}
 
-# EBU R 128 standard parameters for loudness normalization
+# Custom target parameters based on provided values
 LOUDNESS_TARGETS = {
-    "I": -16,  # Integrated Loudness Target in LUFS
-    "LRA": 11,  # Loudness Range Target
-    "TP": -1.5,  # True Peak Target in dBFS
+    "I": -7.75,  # Integrated Loudness Target in LUFS
+    "LRA": 5.10,  # Loudness Range Target
+    "TP": 1.32,   # True Peak Target in dBFS
 }
 
 
@@ -123,17 +123,17 @@ def get_loudness_stats(file_path: pathlib.Path) -> dict | None:
 
 
 def apply_normalization(
-    input_path: pathlib.Path, output_path: pathlib.Path, stats: dict, source_stats: dict | None = None
+    input_path: pathlib.Path, output_path: pathlib.Path, stats: dict
 ) -> bool:
     """
     Second pass of normalization: Apply the calculated stats to normalize.
     """
     click.echo(f"  Applying normalization to: {input_path.name}")
 
-    # Use source video targets if available, otherwise use standard EBU R128 targets
-    target_I = float(source_stats["measured_I"]) if source_stats else LOUDNESS_TARGETS["I"]
-    target_LRA = float(source_stats["measured_LRA"]) if source_stats else LOUDNESS_TARGETS["LRA"]
-    target_TP = float(source_stats["measured_TP"]) if source_stats else LOUDNESS_TARGETS["TP"]
+    # Use the custom target values
+    target_I = LOUDNESS_TARGETS["I"]
+    target_LRA = LOUDNESS_TARGETS["LRA"]
+    target_TP = LOUDNESS_TARGETS["TP"]
     
     loudnorm_filter = (
         f"loudnorm=I={target_I}:"
@@ -195,12 +195,6 @@ def apply_normalization(
     help="Show what would be done without actually modifying files"
 )
 @click.option(
-    "--source-video",
-    "-s",
-    type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=pathlib.Path),
-    help="Use a source video as the base for normalization (uses its audio characteristics)"
-)
-@click.option(
     "--yes",
     "-y",
     is_flag=True,
@@ -213,12 +207,11 @@ def apply_normalization(
     default=2.0,
     help="Loudness threshold in LUFS - only ask to normalize if difference exceeds this value"
 )
-def main(directory: pathlib.Path, dry_run: bool, source_video: pathlib.Path | None, yes: bool, threshold: float):
+def main(directory: pathlib.Path, dry_run: bool, yes: bool, threshold: float):
     """
     Normalizes audio volume for all video files in a directory and its subdirectories.
     
-    If --source-video is provided, uses that video's audio characteristics as the 
-    normalization base instead of standard EBU R128 targets.
+    Uses custom loudness targets based on specific audio characteristics.
     
     By default, asks for confirmation (y/n) before normalizing each file only if
     the loudness difference exceeds the threshold. Use --yes to auto-confirm all files.
@@ -238,14 +231,6 @@ def main(directory: pathlib.Path, dry_run: bool, source_video: pathlib.Path | No
         f for f in directory.rglob("*") if f.suffix.lower() in VIDEO_EXTENSIONS
     ]
     
-    # If source video is provided, get its loudness stats first
-    source_stats = None
-    if source_video:
-        click.echo(f"Using source video as base: {source_video.name}")
-        source_stats = get_loudness_stats(source_video)
-        if not source_stats:
-            click.secho("Error: Could not analyze source video audio", fg="red")
-            sys.exit(1)
 
     if not video_files:
         click.secho("No video files found.", fg="yellow")
@@ -268,18 +253,14 @@ def main(directory: pathlib.Path, dry_run: bool, source_video: pathlib.Path | No
 
             click.echo(f"\nProcessing: {file_path.name}")
 
-            # 1. Analyze the file (or use source stats if provided)
-            if source_stats:
-                stats = source_stats
-                click.echo(f"  Using source video stats for: {file_path.name}")
-            else:
-                stats = get_loudness_stats(file_path)
-                if not stats:
-                    error_count += 1
-                    continue
+            # 1. Analyze the file
+            stats = get_loudness_stats(file_path)
+            if not stats:
+                error_count += 1
+                continue
             
             # Calculate loudness difference from target
-            target_loudness = float(source_stats["measured_I"]) if source_stats else LOUDNESS_TARGETS["I"]
+            target_loudness = LOUDNESS_TARGETS["I"]
             loudness_diff = abs(float(stats["measured_I"]) - target_loudness)
             
             # Print stats for every file
@@ -310,7 +291,7 @@ def main(directory: pathlib.Path, dry_run: bool, source_video: pathlib.Path | No
                 temp_output_path = file_path.with_name(
                     file_path.stem + ".temp_normalized" + file_path.suffix
                 )
-                success = apply_normalization(file_path, temp_output_path, stats, source_stats)
+                success = apply_normalization(file_path, temp_output_path, stats)
 
             if not success:
                 error_count += 1
